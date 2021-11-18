@@ -65,4 +65,70 @@ mean(big_grades$x)
 sd(big_grades$x)
 t.test(big_grades, mu = 74)
 
+
+
+
+
+library(ggstatsplot)
+library(easystats)
+library(rstanarm)
+library(bayestestR)
+
+cool <- read.csv("data/veted_COOLscores.csv")
+
+
+
+ggbetweenstats(cool, condition, score)
+
+
+cool %>% 
+  group_by(condition) %>% 
+  summarise(median = median(score))
+
+bay_cool <- stan_glm(score ~ condition, data = cool)
+pars <- insight::get_parameters(bay_cool)
+
+
+pars %>% 
+  pivot_longer(cols = -`(Intercept)`, names_to = "term", values_to="posterior") %>% 
+  ggplot(aes(x = posterior)) +
+  geom_density(aes(fill = reorder(term, desc(term)))) +
+  scale_fill_manual(values = awtools::spalette) +
+  facet_wrap(facets = ~term, nrow = 3) +
+  theme_classic() +
+  labs(fill = "Model Term", x = "Posterior", y = "Density")
+
+plot(hdi(pars,  ci = c(0.5, 0.75, 0.89, 0.95)))  +
+  theme_classic()
+
+describe_posterior(pars)
+
+# What % of data is outside the ROPE
+pd_pars <- p_direction(pars)
+perc_in_rope5 <- rope(pars, ci = 1)
+plot(pd_pars) + theme_classic() 
+plot(perc_in_rope5) + theme_classic() 
+
+
+BF <- bayesfactor_parameters(bay_cool, null = 0)
+BF
+
+effectsize::interpret_bf(exp(BF$log_BF[2]), include_value = TRUE, rules = "raftery1995")
+
        
+
+
+# Change ROPE
+
+
+BF2 <- bayesfactor_parameters(bay_cool, null = c(-5, 5))
+BF2
+
+effectsize::interpret_bf(exp(BF2$log_BF[2]), include_value = TRUE, rules = "raftery1995")
+library(see)
+plot(BF)
+
+
+test_group2_right <- bayesfactor_parameters(bay_cool, direction = ">")
+test_group2_right
+plot(test_group2_right)
